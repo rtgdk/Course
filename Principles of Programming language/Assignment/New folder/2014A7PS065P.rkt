@@ -1,0 +1,117 @@
+#lang racket
+;(provide (all-defined-out))
+(define inputFile "test5.in") 
+;(vector-ref (current-command-line-arguments) 0)
+(define take (file->list inputFile))
+(define step1 (for/list([it take]) (symbol->string it)))
+(define(WtoWdistance aa bb)
+  (- 1 (/ (length (set-intersect (string->list (string-downcase aa)) (string->list (string-downcase bb)))) (length(set->list (list->set (set-union (string->list (string-downcase aa)) (string->list (string-downcase bb))))))))
+  )
+
+(define (CtoCdistance a b)
+  (minim (for*/list ([word1 (cadr a)]
+                     [word2 (cadr b)])
+           (WtoWdistance word1 word2)) '(101))
+  )
+(define (minim lst p)
+(cond ((null? lst) (car p))
+        ((< (car lst) (car p)) (minim (cdr lst) (list (car lst))))
+        (else (minim (cdr lst) p))) 
+  )
+
+(define x '(0))
+(define (id)
+  (set! x (cons (+ 1 (car x)) '()))
+  (car x))
+
+(define (createList input)
+  (for/list ([word input])
+    (cons (id) (cons (cons word '()) '(())))
+    )
+  )
+(define step2 (createList step1))
+
+(define (make li)
+  (for/list ([cluster li])
+   (list (car cluster)(cadr cluster) (append (caddr cluster)
+           (for/list ([cluster1 li])
+             (if (eqv? (car cluster)(car cluster1))
+                (list (car cluster1) '100)
+                (list (car cluster1) (CtoCdistance cluster cluster1))
+                )
+             )
+           )
+       )
+    )
+)
+(define step3 (make step2))
+
+(define(listindex l id pos)
+  (if (null? l)
+      -1
+  (if(eqv? (caar l)id)
+     pos
+     (listindex (cdr l) id (+ 1 pos))
+   )
+  )
+  )
+
+(define (rm x ls)
+  (if (null? ls)
+      '()
+      (if (or (eqv? (car x) (caar ls))(eqv? (cadr x) (caar ls)))
+          (rm x (cdr ls))
+          (cons (car ls) (rm x (cdr ls)))))
+  )
+
+(define min_tuple (list (caar step3) (caar step3) '100))
+
+(define (min_rec l p tuple)
+(cond ((null? l) tuple)
+      ((null? p) (min_rec (cdr l) (if(null?(cdr l)) '() (caddr(cadr l))) tuple))
+  (else (if(< (cadar p) (caddr tuple))
+     (min_rec l (cdr p) (list (caar l) (caar p) (cadar p)))
+     (min_rec l (cdr p) tuple)
+     ))
+  )
+  )
+
+(define (get_element i l)
+  (cons (list-ref l (listindex l i 0)) '())
+  )
+
+(define (new_cluster nc l)
+(list (id) (sort (append (cadr(car (get_element (car nc) l))) (cadr(car (get_element (cadr nc) l)))) string<?) '())
+  )
+
+(define (do_work2 l curr)
+ (append (rm (min_rec curr (caddar curr) min_tuple) l) (list(new_cluster (min_rec curr (caddar curr) min_tuple) l))))
+ 
+(define (make_raw flist)
+(for/list([cluster flist])
+  (list (car cluster)(cadr cluster) '())
+  )
+ )
+  
+(define (combine_new l)
+(if (<= (length l) 8)
+    l
+(combine_new (make (do_work2 (make_raw l) l ))))
+)
+;(define step4 (combine_new step3))
+
+(define (prin l acc)
+(if(null? l) (append acc '("\n"))
+   (prin(cdr l) (append acc (append (append '("\n")(list (string-join (cadar l) " "))))))
+  )
+ )
+;(define step5 (string-join (prin step4 '()) ""))
+
+;(display step1)
+;(display step2)
+;(display step3)
+;(display step4)
+;(display step5)
+
+(define (subs a b ls)
+
